@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFrameworks>netstandard2.0;net8.0</TargetFrameworks>
+    <Nullable>disable</Nullable>
+    <ImplicitUsings>disable</ImplicitUsings>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>EtaInvoice</AssemblyName>
+    <RootNamespace>EtaInvoice</RootNamespace>
+    <Version>1.0.0</Version>
+    <Authors>Eslam Ashraf</Authors>
+    <Description>A clean, modern .NET SDK for the Egyptian Tax Authority (ETA) e-invoicing APIs.</Description>
+    <PackageId>EtaInvoice</PackageId>
+    <PackageTags>eta;einvoice;egypt;tax;einvoicing</PackageTags>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <RepositoryUrl>https://github.com/SENESO/EtaInvoice.Net</RepositoryUrl>
+    <GenerateDocumentationFile>true</GenerateDocumentationFile>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.Text.Json" Version="8.0.5" />
+    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
+  </ItemGroup>
+
+</Project>
