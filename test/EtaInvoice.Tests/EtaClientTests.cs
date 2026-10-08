@@ -148,6 +148,7 @@ namespace EtaInvoice.Tests
             Assert.IsTrue(handler.Requests[0].Url.EndsWith("/connect/token"));
             StringAssert.Contains("grant_type=client_credentials", handler.Requests[0].Body);
             StringAssert.Contains("scope=InvoicingAPI", handler.Requests[0].Body);
+            StringAssert.StartsWith("Basic ", handler.Requests[0].AuthHeader);
         }
 
         [Test]
@@ -268,7 +269,7 @@ namespace EtaInvoice.Tests
             Assert.AreEqual(2, handler.Requests.Count);
             var req = handler.Requests[1];
             Assert.AreEqual("PUT", req.Method);
-            StringAssert.Contains("/api/v1.0/documents/DOC1/state", req.Url);
+            StringAssert.Contains("/api/v1.0/documents/state/DOC1/state", req.Url);
             using (var doc = JsonDocument.Parse(req.Body))
             {
                 Assert.AreEqual("cancelled", doc.RootElement.GetProperty("status").GetString());

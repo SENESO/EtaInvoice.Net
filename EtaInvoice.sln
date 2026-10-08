@@ -6,6 +6,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EtaInvoice", "src\EtaInvoic
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EtaInvoice.Tests", "test\EtaInvoice.Tests\EtaInvoice.Tests.csproj", "{A1B2C3D4-2222-4222-8222-222222222222}"
 EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "EtaInvoice.IntegrationTests", "test\EtaInvoice.IntegrationTests\EtaInvoice.IntegrationTests.csproj", "{A1B2C3D4-3333-4333-8333-333333333333}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -20,5 +22,9 @@ Global
 		{A1B2C3D4-2222-4222-8222-222222222222}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{A1B2C3D4-2222-4222-8222-222222222222}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{A1B2C3D4-2222-4222-8222-222222222222}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1B2C3D4-3333-4333-8333-333333333333}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1B2C3D4-3333-4333-8333-333333333333}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1B2C3D4-3333-4333-8333-333333333333}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1B2C3D4-3333-4333-8333-333333333333}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

@@ -62,32 +62,34 @@ namespace EtaInvoice
                 if (_cachedToken != null && DateTimeOffset.UtcNow < _tokenExpiresAt)
                     return _cachedToken;
 
-                var form = new FormUrlEncodedContent(new[]
+                var basic = Convert.ToBase64String(Encoding.UTF8.GetBytes(_options.ClientId + ":" + _options.ClientSecret));
+                using (var request = new HttpRequestMessage(HttpMethod.Post, _options.AuthUrl))
                 {
-                    new KeyValuePair<string, string>("grant_type", "client_credentials"),
-                    new KeyValuePair<string, string>("client_id", _options.ClientId),
-                    new KeyValuePair<string, string>("client_secret", _options.ClientSecret),
-                    new KeyValuePair<string, string>("scope", _options.Scope),
-                });
-
-                using (var response = await _http.PostAsync(_options.AuthUrl, form, cancellationToken).ConfigureAwait(false))
-                {
-                    var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (!response.IsSuccessStatusCode)
-                        throw new EtaApiException((int)response.StatusCode, body, message: "Failed to acquire ETA access token.");
-
-                    using (var doc = JsonDocument.Parse(body))
+                    request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", basic);
+                    request.Content = new FormUrlEncodedContent(new[]
                     {
-                        var root = doc.RootElement;
-                        _cachedToken = root.GetProperty("access_token").GetString();
+                        new KeyValuePair<string, string>("grant_type", "client_credentials"),
+                        new KeyValuePair<string, string>("scope", _options.Scope),
+                    });
+                    using (var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false))
+                    {
+                        var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        if (!response.IsSuccessStatusCode)
+                            throw new EtaApiException((int)response.StatusCode, body, message: "Failed to acquire ETA access token.");
 
-                        var expiresIn = 3600;
-                        if (root.TryGetProperty("expires_in", out var exp) && exp.TryGetInt32(out var seconds))
-                            expiresIn = seconds;
+                        using (var doc = JsonDocument.Parse(body))
+                        {
+                            var root = doc.RootElement;
+                            _cachedToken = root.GetProperty("access_token").GetString();
 
-                        // Refresh a minute early so we never send an expired token.
-                        _tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(expiresIn - 60, 30));
-                        return _cachedToken;
+                            var expiresIn = 3600;
+                            if (root.TryGetProperty("expires_in", out var exp) && exp.TryGetInt32(out var seconds))
+                                expiresIn = seconds;
+
+                            // Refresh a minute early so we never send an expired token.
+                            _tokenExpiresAt = DateTimeOffset.UtcNow.AddSeconds(Math.Max(expiresIn - 60, 30));
+                            return _cachedToken;
+                        }
                     }
                 }
             }
@@ -221,7 +223,7 @@ namespace EtaInvoice
             if (string.IsNullOrWhiteSpace(uuid)) throw new ArgumentException("Document uuid is required.", nameof(uuid));
             var token = await GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
 
-            using (var request = new HttpRequestMessage(HttpMethod.Put, BaseUrl($"/api/v1.0/documents/{Uri.EscapeDataString(uuid)}/decline/cancelation")))
+            using (var request = new HttpRequestMessage(HttpMethod.Put, BaseUrl($"/api/v1.0/documents/state/{Uri.EscapeDataString(uuid)}/decline/cancelation")))
             {
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
                 using (var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false))
@@ -256,7 +258,7 @@ namespace EtaInvoice
             if (string.IsNullOrWhiteSpace(reason)) throw new ArgumentException("A reason is required.", nameof(reason));
 
             var payload = JsonSerializer.Serialize(new { status = status, reason = reason }, JsonOptions);
-            await PutJsonAsync($"/api/v1.0/documents/{Uri.EscapeDataString(uuid)}/state", payload, cancellationToken).ConfigureAwait(false);
+            await PutJsonAsync($"/api/v1.0/documents/state/{Uri.EscapeDataString(uuid)}/state", payload, cancellationToken).ConfigureAwait(false);
         }
 
         private async Task<string> GetJsonAsync(string path, CancellationToken cancellationToken)
