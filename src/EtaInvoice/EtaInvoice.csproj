@@ -7,14 +7,19 @@
     <LangVersion>latest</LangVersion>
     <AssemblyName>EtaInvoice</AssemblyName>
     <RootNamespace>EtaInvoice</RootNamespace>
-    <Version>1.0.0</Version>
+    <Version>1.0.1</Version>
     <Authors>Eslam Ashraf</Authors>
     <Description>A clean, modern .NET SDK for the Egyptian Tax Authority (ETA) e-invoicing APIs.</Description>
-    <PackageId>EtaInvoice</PackageId>
+    <PackageId>EtaInvoice.Net</PackageId>
     <PackageTags>eta;einvoice;egypt;tax;einvoicing</PackageTags>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <RepositoryUrl>https://github.com/SENESO/EtaInvoice.Net</RepositoryUrl>
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
+      <PackageIcon>icon.png</PackageIcon>
+    <PackageProjectUrl>https://github.com/SENESO/EtaInvoice.Net</PackageProjectUrl>
+    <RepositoryType>git</RepositoryType>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
+    <PackageReleaseNotes>NuGet polish release: branded package icon, embedded README, and full repository metadata.</PackageReleaseNotes>
   </PropertyGroup>
 
   <ItemGroup>
@@ -22,4 +27,9 @@
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" Version="8.0.2" />
   </ItemGroup>
 
+
+  <ItemGroup>
+    <None Include="../../docs/icon.png" Pack="true" PackagePath="icon.png" />
+    <None Include="../../README.md" Pack="true" PackagePath="README.md" />
+  </ItemGroup>
 </Project>
