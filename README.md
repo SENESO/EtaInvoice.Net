@@ -4,6 +4,7 @@
 [![.NET](https://img.shields.io/badge/.NET-netstandard2.0%20%7C%20net8.0-512BD4)](https://dotnet.microsoft.com/)
 [![CI](https://github.com/SENESO/EtaInvoice.Net/actions/workflows/ci.yml/badge.svg)](https://github.com/SENESO/EtaInvoice.Net/actions/workflows/ci.yml)
 [![GitHub stars](https://img.shields.io/github/stars/SENESO/EtaInvoice.Net)](https://github.com/SENESO/EtaInvoice.Net/stargazers)
+[![NuGet](https://img.shields.io/nuget/v/EtaInvoice.Net)](https://www.nuget.org/packages/EtaInvoice.Net)
 
 # EtaInvoice.Net
 
