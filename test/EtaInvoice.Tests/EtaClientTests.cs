@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Text;
@@ -86,15 +87,18 @@ namespace EtaInvoice.Tests
 
         private class SequencedHandler : HttpMessageHandler
         {
-            private readonly Queue<string> _bodies;
-            private readonly HttpStatusCode _status;
+            private readonly Queue<(string Body, HttpStatusCode Status)> _responses;
             public List<(string Method, string Url, string Body, string AuthHeader)> Requests { get; }
                 = new List<(string, string, string, string)>();
 
             public SequencedHandler(IEnumerable<string> bodies, HttpStatusCode status = HttpStatusCode.OK)
+                : this(bodies.Select(b => (b, status)))
             {
-                _bodies = new Queue<string>(bodies);
-                _status = status;
+            }
+
+            public SequencedHandler(IEnumerable<(string Body, HttpStatusCode Status)> responses)
+            {
+                _responses = new Queue<(string, HttpStatusCode)>(responses);
             }
 
             protected override async Task<HttpResponseMessage> SendAsync(
@@ -105,9 +109,10 @@ namespace EtaInvoice.Tests
                 if (request.Headers.Authorization != null)
                     auth = request.Headers.Authorization.Scheme + " " + request.Headers.Authorization.Parameter;
                 Requests.Add((request.Method.Method, request.RequestUri.ToString(), body, auth));
-                return new HttpResponseMessage(_status)
+                var (responseBody, status) = _responses.Dequeue();
+                return new HttpResponseMessage(status)
                 {
-                    Content = new StringContent(_bodies.Dequeue(), Encoding.UTF8, "application/json")
+                    Content = new StringContent(responseBody, Encoding.UTF8, "application/json")
                 };
             }
         }
@@ -314,8 +319,12 @@ namespace EtaInvoice.Tests
         public void ApiError_ThrowsTypedException_WithErrorCode()
         {
             var handler = new SequencedHandler(
-                new[] { TokenJson, @"{ ""code"": ""DuplicateSubmission"", ""message"": ""Already submitted"" }" },
-                HttpStatusCode.UnprocessableEntity);
+                new[]
+                {
+                    (TokenJson, HttpStatusCode.OK),
+                    (@"{ ""code"": ""DuplicateSubmission"", ""message"": ""Already submitted"" }",
+                        HttpStatusCode.UnprocessableEntity)
+                });
             var client = new EtaClient(Options(), new HttpClient(handler));
 
             var ex = Assert.ThrowsAsync<EtaApiException>(() =>
