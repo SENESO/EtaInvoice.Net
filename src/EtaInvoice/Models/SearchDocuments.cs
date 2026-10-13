@@ -10,11 +10,25 @@ namespace EtaInvoice.Models
     /// </summary>
     public class SearchDocumentsQuery
     {
+        /// <summary>Start of the submission date/time window (UTC). Mandatory when <see cref="SubmissionDateTo"/> is provided.</summary>
         public DateTime? SubmissionDateFrom { get; set; }
+
+        /// <summary>End of the submission date/time window (UTC). Mandatory when <see cref="SubmissionDateFrom"/> is provided.</summary>
         public DateTime? SubmissionDateTo { get; set; }
+
+        /// <summary>Start of the issuance date/time window (UTC). Mandatory when <see cref="IssueDateTo"/> is provided.</summary>
         public DateTime? IssueDateFrom { get; set; }
+
+        /// <summary>End of the issuance date/time window (UTC). Mandatory when <see cref="IssueDateFrom"/> is provided.</summary>
         public DateTime? IssueDateTo { get; set; }
+
+        /// <summary>
+        /// Token for the next page, as returned by the previous call.
+        /// <c>EndofResultSet</c> means all results were returned.
+        /// </summary>
         public string ContinuationToken { get; set; }
+
+        /// <summary>Number of results per page.</summary>
         public int? PageSize { get; set; }
 
         /// <summary><c>Sent</c> or <c>Received</c>.</summary>
@@ -38,7 +52,10 @@ namespace EtaInvoice.Models
         /// <summary>Only with Direction = Received.</summary>
         public string IssuerId { get; set; }
 
+        /// <summary>Unique document id in eInvoicing.</summary>
         public string Uuid { get; set; }
+
+        /// <summary>Internal id supplied in the submitted document.</summary>
         public string InternalId { get; set; }
 
         internal string ToQueryString()
@@ -78,13 +95,16 @@ namespace EtaInvoice.Models
     /// <summary>Result of the Search Documents API.</summary>
     public class SearchDocumentsResult
     {
+        /// <summary>Matching document summaries.</summary>
         [System.Text.Json.Serialization.JsonPropertyName("result")]
         public List<DocumentSummary> Result { get; set; } = new List<DocumentSummary>();
 
+        /// <summary>Continuation metadata for paging.</summary>
         [System.Text.Json.Serialization.JsonPropertyName("metadata")]
         public SearchMetadata Metadata { get; set; }
     }
 
+    /// <summary>Continuation metadata of the Search Documents API.</summary>
     public class SearchMetadata
     {
         /// <summary>

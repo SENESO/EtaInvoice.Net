@@ -16,6 +16,11 @@ namespace EtaInvoice
         /// <summary>Raw response body.</summary>
         public string ResponseBody { get; }
 
+        /// <summary>Creates an exception for a failed ETA API call.</summary>
+        /// <param name="statusCode">HTTP status code returned by the API.</param>
+        /// <param name="responseBody">Raw response body.</param>
+        /// <param name="errorCode">ETA error code from the response body, if present.</param>
+        /// <param name="message">Custom message; defaults to one built from <paramref name="statusCode"/> and <paramref name="errorCode"/>.</param>
         public EtaApiException(int statusCode, string responseBody, string errorCode = null, string message = null)
             : base(message ?? $"ETA API request failed with HTTP {statusCode}.{(errorCode != null ? $" Error code: {errorCode}." : string.Empty)}")
         {

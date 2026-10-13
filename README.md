@@ -15,7 +15,7 @@ A clean, modern .NET SDK for the **Egyptian Tax Authority (ETA) e-invoicing APIs
 ## Install
 
 ```bash
-dotnet add package EtaInvoice
+dotnet add package EtaInvoice.Net
 ```
 
 Targets `netstandard2.0` and `net8.0`. Only dependency: `System.Text.Json` (+ DI abstractions).
@@ -104,6 +104,46 @@ foreach (var rejected in result.RejectedDocuments)
     Console.WriteLine($"rejected: {rejected.InternalId}: {rejected.Error.Code}");
 ```
 
+## Document workflow helpers
+
+Cancel/reject requests between issuer and receiver go through a request/decline
+cycle on ETA. The SDK covers both sides:
+
+```csharp
+// Issuer cancels a document (within the ETA cancellation window).
+await client.CancelDocumentAsync(documentUuid, "Wrong buyer details");
+
+// Receiver rejects a received document (within the ETA rejection window).
+await client.RejectDocumentAsync(documentUuid, "Received incorrect invoice");
+
+// Receiver objects to the issuer's cancellation request.
+await client.DeclineCancellationAsync(documentUuid);
+
+// Issuer objects to the receiver's rejection — the document returns to `valid`.
+await client.DeclineRejectionAsync(documentUuid);
+```
+
+## Listing recent documents
+
+```csharp
+// Quick paged listing of recently sent/received documents.
+var recent = await client.GetRecentDocumentsAsync(new RecentDocumentsQuery
+{
+    PageNo = 1,
+    PageSize = 20,
+    Direction = "Sent",   // "Sent" or "Received"
+    Status = "Valid"
+});
+
+foreach (var doc in recent.Result)
+    Console.WriteLine($"{doc.InternalId} -> {doc.Status} ({doc.Total} EGP)");
+
+Console.WriteLine($"page 1 of {recent.Metadata.TotalPages}, {recent.Metadata.TotalCount} total");
+```
+
+> Prefer `SearchDocumentsAsync` for new integrations — ETA documents it as the
+> better-performing replacement with more filters and no record-count limits.
+
 ## ASP.NET Core DI
 
 ```csharp
@@ -131,7 +171,9 @@ All methods target the `/api/v1.0/…` endpoints documented in the [official ETA
 | `CancelDocumentAsync(uuid, reason)` | `PUT /api/v1.0/documents/state/{uuid}/state` (`cancelled`) |
 | `RejectDocumentAsync(uuid, reason)` | `PUT /api/v1.0/documents/state/{uuid}/state` (`rejected`) |
 | `DeclineCancellationAsync(uuid)` | `PUT /api/v1.0/documents/state/{uuid}/decline/cancelation` |
+| `DeclineRejectionAsync(uuid)` | `PUT /api/v1.0/documents/state/{uuid}/decline/rejection` (issuer objects to a receiver's rejection) |
 | `SearchDocumentsAsync(query)` | `GET /api/v1.0/documents/search` (paged via `metadata.continuationToken`) |
+| `GetRecentDocumentsAsync(query?)` | `GET /api/v1.0/documents/recent` (paged via `metadata.totalPages`/`totalCount`; ETA recommends `SearchDocumentsAsync` for new integrations) |
 
 Document types: `DocumentTypes.Invoice` (`i`), `CreditNote` (`c`), `DebitNote` (`d`), `ImportInvoice` (`ii`), `ExportInvoice` (`ei`), `ExportCreditNote` (`ec`), `ExportDebitNote` (`ed`).
 
@@ -153,10 +195,20 @@ Defaults point at **preprod** (`api.preprod.invoicing.eta.gov.eg`, `id.preprod.e
 
 ## Scope & honesty
 
-- ✅ Verified against the official ETA SDK docs (Oct 2026): auth, submit, submission status, document details/raw/PDF, cancel, reject, decline-cancellation, search.
+- ✅ Verified against the official ETA SDK docs (Oct 2026): auth, submit, submission status, document details/raw/PDF, cancel, reject, decline-cancellation, **decline-rejection**, search, **recent documents**.
 - ⚠️ `IDocumentSigner` is an interface — you bring the real CAdES-BES signing (USB token/HSM). No fake crypto anywhere.
 - ⚠️ Client-side validation (`EtaDocumentValidator`) catches structural mistakes only; ETA server-side validation is authoritative.
 - Not covered (yet): EGS/GS1 code management APIs, document packages, notification callbacks, e-receipt (POS) APIs. Issues and PRs welcome.
+
+## Helpers
+
+| Type | What it does |
+|---|---|
+| `EtaDocumentValidator.Validate(document)` | Client-side structural checks (required fields, taxpayer formats, tax uniqueness, totals) — returns a list of problems, empty when OK |
+| `EtaCanonicalJson.ToCanonicalJson(document)` | Deterministic JSON (sorted keys, no whitespace, `signatures` excluded) — the exact input your `IDocumentSigner` receives |
+| `IDocumentSigner` | Interface you implement with your eSeal/HSM/USB-token signing to produce the Base64 CAdES-BES issuer signature |
+| `SearchDocumentsQuery` / `RecentDocumentsQuery` | Filter/paging models for the two list APIs |
+| `EtaClientOptions.Production(clientId, clientSecret)` | Pre-built options pointing at the production environment |
 
 ## License
 

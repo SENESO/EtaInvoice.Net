@@ -25,6 +25,12 @@ namespace Microsoft.Extensions.DependencyInjection
             return services;
         }
 
+        /// <summary>
+        /// Registers <see cref="EtaInvoice.EtaClient"/> as a singleton, configured
+        /// with the options built by <paramref name="configure"/>.
+        /// </summary>
+        /// <param name="services">The service collection.</param>
+        /// <param name="configure">Configures the <see cref="EtaInvoice.EtaClientOptions"/>.</param>
         public static IServiceCollection AddEtaInvoice(
             this IServiceCollection services, Action<EtaInvoice.EtaClientOptions> configure)
         {

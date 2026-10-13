@@ -37,6 +37,13 @@ namespace EtaInvoice
         private string _cachedToken;
         private DateTimeOffset _tokenExpiresAt;
 
+        /// <summary>Creates a client with the given options and HTTP transport.</summary>
+        /// <param name="options">Client configuration (credentials, endpoints). Cannot be null.</param>
+        /// <param name="httpClient">
+        /// Optional <see cref="HttpClient"/> to use. When null the client creates
+        /// its own instance (recommended: pass an <c>IHttpClientFactory</c>-managed
+        /// instance instead). A client passed by the caller is never disposed.
+        /// </param>
         public EtaClient(EtaClientOptions options, HttpClient httpClient = null)
         {
             if (options == null) throw new ArgumentNullException(nameof(options));
@@ -110,6 +117,7 @@ namespace EtaInvoice
         /// When null, documents are submitted as-is — use this only for preprod
         /// testing or when documents already carry signatures.
         /// </param>
+        /// <param name="cancellationToken">Cancellation token.</param>
         public async Task<SubmissionResult> SubmitDocumentsAsync(
             IEnumerable<EtaDocument> documents,
             IDocumentSigner signer = null,
@@ -217,22 +225,55 @@ namespace EtaInvoice
         /// <summary>
         /// Declines a cancellation requested by the issuer
         /// (<c>PUT /api/v1.0/documents/state/{uuid}/decline/cancelation</c>).
+        /// Only the receiver can decline a cancellation request.
         /// </summary>
-        public async Task DeclineCancellationAsync(string uuid, CancellationToken cancellationToken = default)
+        /// <param name="uuid">Unique id of the document.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public Task DeclineCancellationAsync(string uuid, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(uuid)) throw new ArgumentException("Document uuid is required.", nameof(uuid));
-            var token = await GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
+            return PutNoBodyAsync($"/api/v1.0/documents/state/{Uri.EscapeDataString(uuid)}/decline/cancelation", cancellationToken);
+        }
 
-            using (var request = new HttpRequestMessage(HttpMethod.Put, BaseUrl($"/api/v1.0/documents/state/{Uri.EscapeDataString(uuid)}/decline/cancelation")))
-            {
-                request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-                using (var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false))
-                {
-                    var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                    if (!response.IsSuccessStatusCode)
-                        throw CreateApiException(response, body);
-                }
-            }
+        /// <summary>
+        /// Declines a rejection requested by the receiver
+        /// (<c>PUT /api/v1.0/documents/state/{uuid}/decline/rejection</c>).
+        /// Only the issuer can decline a rejection; a declined rejection returns
+        /// the document to the <c>valid</c> state. Decline is possible only within
+        /// the ETA-configured rejection window.
+        /// </summary>
+        /// <param name="uuid">Unique id of the document.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        public Task DeclineRejectionAsync(string uuid, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(uuid)) throw new ArgumentException("Document uuid is required.", nameof(uuid));
+            return PutNoBodyAsync($"/api/v1.0/documents/state/{Uri.EscapeDataString(uuid)}/decline/rejection", cancellationToken);
+        }
+
+        /// <summary>
+        /// Lists recently sent or received documents
+        /// (<c>GET /api/v1.0/documents/recent</c>).
+        /// Pass a <see cref="Models.RecentDocumentsQuery"/> to page and filter
+        /// (defaults to the API's own paging when null).
+        /// <para>
+        /// Note: ETA recommends the <see cref="SearchDocumentsAsync"/> API over
+        /// this one — it has better performance, more filters, and no
+        /// record-count limits.
+        /// </para>
+        /// </summary>
+        /// <param name="query">Optional paging/filter parameters.</param>
+        /// <param name="cancellationToken">Cancellation token.</param>
+        /// <returns>
+        /// Document summaries with paging metadata (<c>totalPages</c>,
+        /// <c>totalCount</c>, and — when the result set exceeds ETA limits —
+        /// <c>queryContainsCompleteResultSet</c>/<c>remainingRecordsCount</c>).
+        /// </returns>
+        public async Task<RecentDocumentsResult> GetRecentDocumentsAsync(
+            RecentDocumentsQuery query = null, CancellationToken cancellationToken = default)
+        {
+            var qs = (query ?? new RecentDocumentsQuery()).ToQueryString();
+            var body = await GetJsonAsync("/api/v1.0/documents/recent" + (qs.Length > 0 ? "?" + qs : string.Empty), cancellationToken).ConfigureAwait(false);
+            return JsonSerializer.Deserialize<RecentDocumentsResult>(body, JsonOptions);
         }
 
         /// <summary>
@@ -296,12 +337,19 @@ namespace EtaInvoice
         }
 
         private async Task PutJsonAsync(string path, string json, CancellationToken cancellationToken)
+            => await PutAsync(path, json, cancellationToken).ConfigureAwait(false);
+
+        private Task PutNoBodyAsync(string path, CancellationToken cancellationToken)
+            => PutAsync(path, null, cancellationToken);
+
+        private async Task PutAsync(string path, string json, CancellationToken cancellationToken)
         {
             var token = await GetAccessTokenAsync(cancellationToken).ConfigureAwait(false);
             using (var request = new HttpRequestMessage(HttpMethod.Put, BaseUrl(path)))
             {
                 request.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-                request.Content = new StringContent(json, Encoding.UTF8, "application/json");
+                if (json != null)
+                    request.Content = new StringContent(json, Encoding.UTF8, "application/json");
                 using (var response = await _http.SendAsync(request, cancellationToken).ConfigureAwait(false))
                 {
                     var body = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
@@ -343,6 +391,11 @@ namespace EtaInvoice
             return null;
         }
 
+        /// <summary>
+        /// Releases the internal token lock and the <see cref="HttpClient"/> when
+        /// it was created by this client. An <see cref="HttpClient"/> supplied by
+        /// the caller is never disposed.
+        /// </summary>
         public void Dispose()
         {
             if (_ownsHttp)

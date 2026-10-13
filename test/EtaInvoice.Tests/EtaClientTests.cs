@@ -317,6 +317,71 @@ namespace EtaInvoice.Tests
         }
 
         [Test]
+        public async Task DeclineCancellation_SendsPutToDeclineCancelation()
+        {
+            var handler = new SequencedHandler(new[] { TokenJson, @"{}" });
+            var client = new EtaClient(Options(), new HttpClient(handler));
+
+            await client.DeclineCancellationAsync("DOC1");
+
+            Assert.AreEqual(2, handler.Requests.Count);
+            var req = handler.Requests[1];
+            Assert.AreEqual("PUT", req.Method);
+            StringAssert.Contains("/api/v1.0/documents/state/DOC1/decline/cancelation", req.Url);
+            Assert.IsNull(req.Body); // no request body
+        }
+
+        [Test]
+        public async Task DeclineRejection_SendsPutToDeclineRejection()
+        {
+            var handler = new SequencedHandler(new[] { TokenJson, @"{}" });
+            var client = new EtaClient(Options(), new HttpClient(handler));
+
+            await client.DeclineRejectionAsync("DOC1");
+
+            Assert.AreEqual(2, handler.Requests.Count);
+            var req = handler.Requests[1];
+            Assert.AreEqual("PUT", req.Method);
+            StringAssert.Contains("/api/v1.0/documents/state/DOC1/decline/rejection", req.Url);
+            Assert.IsNull(req.Body); // no request body
+        }
+
+        [Test]
+        public async Task GetRecentDocuments_BuildsQueryString_AndParsesResult()
+        {
+            var handler = new SequencedHandler(new[]
+            {
+                TokenJson,
+                @"{ ""result"": [ { ""uuid"": ""DOC1"", ""internalId"": ""INV-001"",
+                      ""typeName"": ""i"", ""status"": ""Valid"", ""total"": 1140 } ],
+                     ""metadata"": { ""totalPages"": 3, ""totalCount"": 55,
+                       ""queryContainsCompleteResultSet"": false, ""remainingRecordsCount"": 10 } }"
+            });
+            var client = new EtaClient(Options(), new HttpClient(handler));
+
+            var result = await client.GetRecentDocumentsAsync(new RecentDocumentsQuery
+            {
+                PageNo = 1,
+                PageSize = 20,
+                Direction = "Sent",
+                Status = "Valid"
+            });
+
+            Assert.AreEqual(1, result.Result.Count);
+            Assert.AreEqual("DOC1", result.Result[0].Uuid);
+            Assert.AreEqual(3, result.Metadata.TotalPages);
+            Assert.AreEqual(55, result.Metadata.TotalCount);
+            Assert.AreEqual(false, result.Metadata.QueryContainsCompleteResultSet);
+            Assert.AreEqual(10, result.Metadata.RemainingRecordsCount);
+
+            var url = handler.Requests[1].Url;
+            StringAssert.Contains("/api/v1.0/documents/recent?", url);
+            StringAssert.Contains("pageNo=1", url);
+            StringAssert.Contains("pageSize=20", url);
+            StringAssert.Contains("direction=Sent", url);
+        }
+
+        [Test]
         public void ApiError_ThrowsTypedException_WithErrorCode()
         {
             var handler = new SequencedHandler(
